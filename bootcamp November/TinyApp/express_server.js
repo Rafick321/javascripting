@@ -22,7 +22,7 @@ function generateRandomString() {
 }
 
 
-
+// Database of shortURL and longURL
 var urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
@@ -43,9 +43,11 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
+//create shortURL for longURL requested by user
 app.post("/urls", (req, res) => {
-  console.log(req.body);  // debug statement to see POST parameters
-  res.send("Ok");         // Respond with 'Ok' (we will replace this)
+  var newID = generateRandomString();
+  urlDatabase[newID] = req.body.longURL;
+  res.redirect('/urls/' + newID);
 });
 
 app.get('/urls_show', function(req, res) {
@@ -64,6 +66,13 @@ app.get("/urls/:id", (req, res) => {
 
   res.render("urls_show", templateVars);
 });
+
+//user input shortURL in browser and redirect to the website of longURL
+app.get("/u/:shortURL", (req, res) => {
+  let longURL = urlDatabase[req.params.shortURL];
+  res.redirect(longURL);
+});
+
 
 // app.get("/hello", (req, res) => {
 //   res.send("<html><body>Hello <b>World</b></body></html>\n");
