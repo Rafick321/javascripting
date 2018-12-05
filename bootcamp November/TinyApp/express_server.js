@@ -1,13 +1,13 @@
 var express = require("express");
-var methodOverride = require('method-override');
+var cookieParser = require('cookie-parser')
 var app = express();
 var PORT = 8080; // default port 8080
 
 // body-parser library will allow us to access POST request parameters, such as req.body.longURL
 const bodyParser = require("body-parser");
-app.use(bodyParser.urlencoded({extended: true}));
 
-app.use(methodOverride('X-HTTP-Method-Override'))
+app.use(cookieParser());
+app.use(bodyParser.urlencoded({extended: true}));
 
 // tells Express app to use EJS as its templating engine
 app.set("view engine", "ejs");
@@ -31,7 +31,14 @@ var urlDatabase = {
 
 // render the urls_new.ejs template to present the form to the user
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  let templateVars = {
+                        currentUser: req.cookies["username"]
+                      };
+  res.render("urls_new", templateVars);
+});
+
+app.get("/login", (req, res) => {
+  res.render("/login");
 });
 
 //Home page
@@ -40,9 +47,18 @@ app.get("/", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  let templateVars = { urls: urlDatabase };
+  let templateVars = { urls: urlDatabase,
+                       currentUser: req.cookies["username"]
+                     };
   res.render("urls_index", templateVars);
 });
+
+app.post("/login", (req, res) => {
+  let currentUser = req.body.username
+  res.cookie('username', currentUser);
+  res.redirect('/urls');
+})
+
 
 //create shortURL for longURL requested by user
 app.post("/urls", (req, res) => {
@@ -62,7 +78,8 @@ app.get("/urls.json", (req, res) => {
 app.get("/urls/:id", (req, res) => {
   let templateVars = {
                         shortURL: req.params.id,
-                        longURL: urlDatabase[req.params.id]
+                        longURL: urlDatabase[req.params.id],
+                        currentUser: req.cookies["username"]
                       };
 
   res.render("urls_show", templateVars);
@@ -84,10 +101,10 @@ app.post("/urls/:id/update", (req, res) => {
   res.redirect("/urls");
 })
 
-
-// app.get("/hello", (req, res) => {
-//   res.send("<html><body>Hello <b>World</b></body></html>\n");
-// });
+app.post("/logout", (req, res) => {
+  res.clearCookie('username');
+  res.redirect('/urls');
+})
 
 
 app.listen(PORT, () => {

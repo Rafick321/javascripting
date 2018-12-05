@@ -1,10 +1,11 @@
-<% include partials/_header %>
-
+<%- include partials/_header%>
 
 
 <body>
+<%- include("partials/_login", {currentUser: currentUser})%>
 
   <ul>
+    <p><b>Your Short URLs:</b></p>
     <% for (let eachURL in urls) { %>
       <li>
         <form method="POST" action="/urls/<%=eachURL%>/delete">
@@ -16,7 +17,6 @@
       </li>
     <% }; %>
   </ul>
-
 
 </body>
 </html>
