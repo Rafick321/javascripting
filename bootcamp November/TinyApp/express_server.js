@@ -1,4 +1,5 @@
 var express = require("express");
+var methodOverride = require('method-override');
 var app = express();
 var PORT = 8080; // default port 8080
 
@@ -6,10 +7,10 @@ var PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
+app.use(methodOverride('X-HTTP-Method-Override'))
 
 // tells Express app to use EJS as its templating engine
 app.set("view engine", "ejs");
-
 
 // Function to generate a string of 6 random alphanumeric shortURL
 function generateRandomString() {
@@ -47,7 +48,7 @@ app.get("/urls", (req, res) => {
 app.post("/urls", (req, res) => {
   var newID = generateRandomString();
   urlDatabase[newID] = req.body.longURL;
-  res.redirect('/urls/' + newID);
+  res.redirect(`/urls/${newID}`);
 });
 
 app.get('/urls_show', function(req, res) {
@@ -73,6 +74,16 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 
+app.post("/urls/:id/delete", (req, res) => {
+  delete urlDatabase[req.params.id]
+  res.redirect("/urls");
+})
+
+app.post("/urls/:id/update", (req, res) => {
+  urlDatabase[req.params.id] = req.body.newLongURL;
+  res.redirect("/urls");
+})
+
 
 // app.get("/hello", (req, res) => {
 //   res.send("<html><body>Hello <b>World</b></body></html>\n");
@@ -82,3 +93,17 @@ app.get("/u/:shortURL", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
