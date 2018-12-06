@@ -1,10 +1,7 @@
 <%- include partials/_header %>
 
-
-
   <body>
-    <%- include("partials/_login", {currentUser: currentUser})%>
-
+  <%- include("login") %>
 
       <ul>
         <form action="/urls/<%= shortURL %>/update" method="post" style="margin:100px;">

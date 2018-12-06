@@ -1,0 +1,19 @@
+
+
+
+
+
+<% if(!currentUser) { %>
+  <p><b>Login:</b></p>
+  <form action="/login" method="POST">
+    <label>Email: </label><input type="email" name="email">
+    <label>Password: </label><input type="password" name="password">
+    <button>Sign in</button>
+  </form>
+<% } else { %>
+    <h3> <b><%= currentUser.id %></b> welcome to TinyApp!</h3>
+    <form method="POST" action="/logout">
+      <button>Logout</button>
+    </form>
+<% } %>
+

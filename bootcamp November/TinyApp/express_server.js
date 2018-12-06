@@ -1,7 +1,7 @@
-var express = require("express");
-var cookieParser = require('cookie-parser')
-var app = express();
-var PORT = 8080; // default port 8080
+const express = require("express");
+const cookieParser = require('cookie-parser')
+const app = express();
+const PORT = 8080; // default port 8080
 
 // body-parser library will allow us to access POST request parameters, such as req.body.longURL
 const bodyParser = require("body-parser");
@@ -34,6 +34,7 @@ function generateRandomString() {
 }
 
 
+
 // Database of Users
 const users = {
   "userRandomID": {
@@ -48,8 +49,9 @@ const users = {
   }
 }
 
+
 // Database of shortURL and longURL
-var urlDatabase = {
+const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
 };
@@ -57,32 +59,34 @@ var urlDatabase = {
 // render the urls_new.ejs template to present the form to the user
 app.get("/urls/new", (req, res) => {
   let templateVars = {
-                        currentUser: req.cookies["username"]
+                        currentUser: users[req.cookies['user_id']]
                       };
   res.render("urls_new", templateVars);
 });
 
-app.get("/login", (req, res) => {
-  res.render("/login");
-});
 
 //Home page
 app.get("/", (req, res) => {
-  res.send("Welcome to TinyApp!");
+  res.send('<p> <b>Welcome to TinyApp!</b> <br> Register for free <a href="/register">here</a>! <br>Already a member! Login <a href="/login">here</a>!</p>');
 });
 
 app.get("/urls", (req, res) => {
-  let templateVars = { urls: urlDatabase,
-                       currentUser: req.cookies["username"]
-                     };
+  const templateVars = { urls: urlDatabase,
+                         currentUser: users[req.cookies['user_id']]
+                        };
   res.render("urls_index", templateVars);
 });
 
-app.post("/login", (req, res) => {
-  let currentUser = req.body.username
-  res.cookie('username', currentUser);
-  res.redirect('/urls');
-})
+app.get('/urls_show', (req, res) => {
+  const templateVars = { urls: urlDatabase,
+                         currentUser: users[req.cookies['user_id']]
+                        };
+  res.render('urls_show', templateVars);
+});
+
+app.get('/register', (req, res) => {
+    res.render('register');
+});
 
 
 //create shortURL for longURL requested by user
@@ -92,24 +96,29 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${newID}`);
 });
 
-app.get('/urls_show', function(req, res) {
-    res.render('urls_show');
-});
 
-app.get('/register', function(req, res) {
-    res.render('register');
+app.get('/login', (req, res) => {
+  let templateVars = {
+                        shortURL: req.params.id,
+                        longURL: urlDatabase[req.params.id],
+                        currentUser: users[req.cookies['user_id']]
+
+                      };
+  res.render('login', templateVars);
 });
 
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
+
+
 // registration endpoint
 app.post("/register", (req, res) => {
-  let newUser = generateRandomUserID();
+  let user_id = generateRandomUserID();
   //if user do not fill email/password. Send error message
   if (req.body.email === "" || req.body.password === "") {
-    res.status(400).send('Email and/or Password cannot be blank!');
+    res.status(400).send('<p>Email and/or Password cannot be blank!</p><a href="/register">Back to registration page.</a>');
   }
   //if user register with an email existed in users database. Send error message
   let existingUserEmail = [];
@@ -118,27 +127,67 @@ app.post("/register", (req, res) => {
   }
   for (let i = 0; i < existingUserEmail.length; i++) {
     if (req.body.email === existingUserEmail[i]) {
-    res.status(400).send('Email already exist. Please user another email or login!');
+    res.status(400).send('<p>Email already exist! Please <a href="/register">register</a> with another email or <a href="/login">Login here.</a>!</p>');
     }
   }
   //data entered in registration are added to users database
-  users[newUser] = {
-                        id: newUser,
+  users[user_id] = {
+                        id: user_id,
                         email: req.body.email,
                         password: req.body.password
                       }
-  res.cookie('user_id', newUser); //setting cookie for newly registered user
-
+  res.cookie('user_id', user_id); //setting cookie for newly registered user
   res.redirect("/urls");
 })
+
+
+  // function to find ID of current user
+  function findUser(email) {
+    for (const userId in users) {
+      if (users[userId].email === email) {
+        return users[userId].id;
+      }
+    }
+    return false;
+  }
+
+  // function to authenticate user
+  function authenticateUser(email, password) {
+    // filter
+    const [userId] = Object.keys(users).filter(
+      id =>
+        users[id].email === email && users[id].password === password
+    );
+    return userId;
+  }
+
+
+// login endpoint
+app.post('/login', (req, res) => {
+  // get the info from the form
+  const { email, password } = req.body;
+
+  // Authenticate the user
+  const userId = authenticateUser(email, password);
+
+  // if authenticate
+  if (userId) {
+    res.cookie('user_id', userId);
+    // set the cookie -> store the id
+    res.redirect('/');
+  } else {
+    res.send(`Error: 403`);
+  }
+})
+
+
 
 app.get("/urls/:id", (req, res) => {
   let templateVars = {
                         shortURL: req.params.id,
                         longURL: urlDatabase[req.params.id],
-                        currentUser: req.cookies["username"]
+                        currentUser: req.cookies["user_id"]
                       };
-
   res.render("urls_show", templateVars);
 });
 
@@ -159,8 +208,8 @@ app.post("/urls/:id/update", (req, res) => {
 })
 
 app.post("/logout", (req, res) => {
-  res.clearCookie('username');
-  res.redirect('/urls');
+  res.clearCookie('user_id');
+  res.redirect('/login');
 })
 
 
