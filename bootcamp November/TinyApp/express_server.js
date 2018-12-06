@@ -12,6 +12,17 @@ app.use(bodyParser.urlencoded({extended: true}));
 // tells Express app to use EJS as its templating engine
 app.set("view engine", "ejs");
 
+
+// Function to generate a random User ID
+function generateRandomUserID() {
+  let randomString = "";
+  const possible = "abcdefghijklmnopqrstuvwxyz0123456789";
+  for (var i = 0; i <= 5; i++) {
+    randomString += possible[(Math.floor(Math.random() * possible.length))];
+  }
+  return `USER${randomString}`;
+}
+
 // Function to generate a string of 6 random alphanumeric shortURL
 function generateRandomString() {
   let randomString = "";
@@ -22,6 +33,20 @@ function generateRandomString() {
   return randomString;
 }
 
+
+// Database of Users
+const users = {
+  "userRandomID": {
+    id: "userRandomID",
+    email: "user@example.com",
+    password: "user1"
+  },
+ "user2RandomID": {
+    id: "user2RandomID",
+    email: "user2@example.com",
+    password: "user2"
+  }
+}
 
 // Database of shortURL and longURL
 var urlDatabase = {
@@ -71,9 +96,41 @@ app.get('/urls_show', function(req, res) {
     res.render('urls_show');
 });
 
+app.get('/register', function(req, res) {
+    res.render('register');
+});
+
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
+
+// registration endpoint
+app.post("/register", (req, res) => {
+  let newUser = generateRandomUserID();
+  //if user do not fill email/password. Send error message
+  if (req.body.email === "" || req.body.password === "") {
+    res.status(400).send('Email and/or Password cannot be blank!');
+  }
+  //if user register with an email existed in users database. Send error message
+  let existingUserEmail = [];
+  for (let item in users) {
+    existingUserEmail.push(users[item].email);
+  }
+  for (let i = 0; i < existingUserEmail.length; i++) {
+    if (req.body.email === existingUserEmail[i]) {
+    res.status(400).send('Email already exist. Please user another email or login!');
+    }
+  }
+  //data entered in registration are added to users database
+  users[newUser] = {
+                        id: newUser,
+                        email: req.body.email,
+                        password: req.body.password
+                      }
+  res.cookie('user_id', newUser); //setting cookie for newly registered user
+
+  res.redirect("/urls");
+})
 
 app.get("/urls/:id", (req, res) => {
   let templateVars = {
