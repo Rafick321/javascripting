@@ -7,14 +7,17 @@
   <ul>
     <p><b>Your Short URLs:</b></p>
     <% for (let eachURL in urls) { %>
-      <li>
-        <form method="POST" action="/urls/<%=eachURL%>/delete">
-          <%= eachURL %> : <%= urls[eachURL] %>
-          <a href="/urls/<%=eachURL%>">Edit</a>
-          <button>Delete <i class="fas fa-trash-alt"></i></button>
 
-        </form>
-      </li>
+      <% if (currentUser.id === urls[eachURL].id) { %>
+        <li>
+          <form method="POST" action="/urls/<%=eachURL%>/delete">
+            <%= eachURL %>: <%= urls[eachURL].URL %>
+            <a href="/urls/<%= eachURL %>">Edit</a>
+            <button>Delete <i class="fas fa-trash-alt"></i></button>
+          </form>
+        </li>
+      <% } %>
+
     <% }; %>
   </ul>
 
