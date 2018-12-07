@@ -1,14 +1,22 @@
 const express = require("express");
-const cookieParser = require('cookie-parser')
+// const cookieParser = require('cookie-parser')
+var cookieSession = require('cookie-session')
 const app = express();
 const PORT = 8080; // default port 8080
 const bcrypt = require('bcrypt');
 
+app.use(cookieSession({
+  name: 'session',
+  keys: ['This is my secret key'],
+
+  // Cookie Options
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}))
 
 // body-parser library will allow us to access POST request parameters, such as req.body.longURL
 const bodyParser = require("body-parser");
 
-app.use(cookieParser());
+// app.use(cookieParser());
 app.use(bodyParser.urlencoded({extended: true}));
 
 // tells Express app to use EJS as its templating engine
@@ -41,12 +49,12 @@ const users = {
   "userRandomID": {
                     id: "userRandomID",
                     email: "user@example.com",
-                    password: "user1",
+                    password: bcrypt.hashSync('user1', 10)
                   },
  "user2RandomID": {
                     id: "user2RandomID",
                     email: "user2@example.com",
-                    password: "user2"
+                    password: bcrypt.hashSync('user2', 10)
                   }
               }
 
@@ -63,14 +71,6 @@ const urlDatabase = {
                   };
 
 
-// let longUrl = "";
-// let shortUrl = "";
-// for (let item in urlDatabase) {
-//   longUrl = urlDatabase[item].URL;
-//   shortUrl = item;
-// }
-
-
 
 //Home page
 app.get("/", (req, res) => {
@@ -81,27 +81,28 @@ app.get("/", (req, res) => {
 // render the urls_new.ejs template to present the form to the user
 app.get("/urls/new", (req, res) => {
   let templateVars = {  urls: urlDatabase,
-                        currentUser: users[req.cookies['user_id']]
+                        currentUser: users[req.session['user_id']]
                       };
   res.render("urls_new", templateVars);
 });
 
 
 app.get("/urls", (req, res) => {
-  if (!users[req.cookies['user_id']]) {
+  if (!users[req.session['user_id']]) {
     res.redirect("/login");
     return;
   }
   const templateVars = { urls: urlDatabase,
-                         currentUser: users[req.cookies['user_id']]
+                         currentUser: users[req.session['user_id']]
                         };
   res.render("urls_index", templateVars);
 });
 
+
 app.get('/urls_show', (req, res) => {
   const templateVars = { urls: urlDatabase,
                          longURL: longUrl,
-                         currentUser: users[req.cookies['user_id']]
+                         currentUser: users[req.session['user_id']]
                         };
   res.render('urls_show', templateVars);
 });
@@ -113,7 +114,7 @@ app.get('/register', (req, res) => {
 
 
 app.get("/urls/:id", (req, res) => {
-  let currentUser = users[req.cookies['user_id']];
+  let currentUser = users[req.session['user_id']];
   if (!currentUser) {
     res.send('You are not logged in. Please login <a href="/login">here</a> or register <a href="/register">here.</a>!</p>')
   } else if (currentUser.id !== urlDatabase[req.params.id].id) {
@@ -123,30 +124,18 @@ app.get("/urls/:id", (req, res) => {
     let templateVars = {  urls: urlDatabase,
                           shortURL: req.params.id,
                           longURL: urlDatabase[req.params.id].URL,
-                          currentUser: req.cookies["user_id"]
+                          currentUser: req.session['user_id']
                         };
     res.render("urls_show", templateVars);
   }
 });
 
 
-// //create shortURL for longURL requested by user
-// app.post("/urls", (req, res) => {
-//   // let currentUser = users[req.cookies['user_id']];
-//   // let newID = generateRandomString();
-//   // if (currentUser === urlDatabase[newID]) {
-//   //   urlDatabase['newID'] = {
-//   //                           id: currentUser,
-//   //                           URL: req.body.longURL
-//   //                         }
-//   // }
-//   res.redirect(`/urls/${newID}`);
-// });
 
 
 app.get('/login', (req, res) => {
   let templateVars = {
-                        currentUser: users[req.cookies['user_id']]
+                        currentUser: users[req.session['user_id']]
                       };
   res.render('login', templateVars);
 });
@@ -175,7 +164,7 @@ app.post("/register", (req, res) => {
                         email: req.body.email,
                         password: bcrypt.hashSync(req.body.password, 10)
                   }
-  res.cookie('user_id', user_id); //setting cookie for newly registered user
+  req.session.user_id = user_id; //setting cookie for newly registered user
   res.redirect("/urls");
 })
 
@@ -211,17 +200,17 @@ app.post('/login', (req, res) => {
 
   // if authenticate
   if (userId) {
-    res.cookie('user_id', userId);
     // set the cookie -> store the id
+    req.session.user_id = userId;
     res.redirect('/urls');
-  } else {
-    res.status(403).send('<p>Email you are using is not registered! Please register <a href="/register">here</a> or login with another email <a href="/login"> here.</a>!</p>');
+    return;
   }
+  res.status(403).send('<p>Email you are using is not registered! Please register <a href="/register">here</a> or login with another email <a href="/login"> here.</a>!</p>');
 })
 
 //only registered/logged in user can create new URL
 app.post('/urls/new', (req, res) => {
-  let currentUser = users[req.cookies['user_id']];
+  let currentUser = users[req.session['user_id']];
   if (!currentUser) {
     res.redirect("/login");
   }
@@ -233,6 +222,7 @@ app.post('/urls/new', (req, res) => {
   res.redirect('/urls');
 });
 
+
 //user input shortURL in browser and get redirect to the website of longURL
 app.get("/u/:shortURL", (req, res) => {
 
@@ -241,22 +231,17 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.post("/urls/:id", (req, res) => {
-  let currentUser = users[req.cookies['user_id']];
+  let currentUser = users[req.session['user_id']];
   if (!currentUser) {
     res.redirect("/login");
   }
   res.redirect("/urls_index");
 })
 
-app.post("/logout", (req, res) => {
-  res.clearCookie('user_id');
-  res.redirect('/login');
-})
-
 
 //only registered user can delete existing URL
 app.post("/urls/:id/delete", (req, res) => {
-  let currentUser = users[req.cookies['user_id']];
+  let currentUser = users[req.session['user_id']];
   if (!currentUser) {
     res.redirect("/login");
   }
@@ -264,9 +249,10 @@ app.post("/urls/:id/delete", (req, res) => {
   res.redirect("/urls");
 })
 
+
 //only registered user can update existing URL
 app.post("/urls/:id/update", (req, res) => {
-  let currentUser = users[req.cookies['user_id']];
+  let currentUser = users[req.session['user_id']];
   if (!currentUser) {
     res.redirect("/login");
   }
@@ -274,10 +260,12 @@ app.post("/urls/:id/update", (req, res) => {
   res.redirect("/urls");
 })
 
+
 app.post("/logout", (req, res) => {
-  res.clearCookie('user_id');
+  req.session = null;
   res.redirect('/login');
 })
+
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
